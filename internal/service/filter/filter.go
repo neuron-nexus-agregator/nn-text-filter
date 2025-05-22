@@ -1,6 +1,7 @@
 package filter
 
 import (
+	"agregator/text-filter/internal/interfaces"
 	"agregator/text-filter/internal/model/kafka"
 	"net/http"
 	"strings"
@@ -9,12 +10,14 @@ import (
 type Filter struct {
 	input  chan kafka.Item
 	output chan kafka.Item
+	logger interfaces.Logger
 }
 
-func New() *Filter {
+func New(logger interfaces.Logger) *Filter {
 	return &Filter{
 		input:  make(chan kafka.Item, 30),
 		output: make(chan kafka.Item, 30),
+		logger: logger,
 	}
 }
 
@@ -51,6 +54,9 @@ func (f *Filter) filter(item kafka.Item) bool {
 	// Проверяем доступность ссылки
 	resp, err := http.Get(item.Link)
 	if err != nil || resp.StatusCode != http.StatusOK {
+		if err != nil {
+			f.logger.Error("Error checking link", "error", err)
+		}
 		return false
 	}
 

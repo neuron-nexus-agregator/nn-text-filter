@@ -4,8 +4,9 @@ import (
 	kafka_model "agregator/text-filter/internal/model/kafka"
 	"context"
 	"encoding/json"
-	"log"
 	"time"
+
+	"agregator/text-filter/internal/interfaces"
 
 	"github.com/segmentio/kafka-go"
 )
@@ -13,9 +14,10 @@ import (
 type Kafka struct {
 	writer *kafka.Writer
 	reader *kafka.Reader
+	logger interfaces.Logger
 }
 
-func New(brokers []string, readTopic, writeTopic, groupID string) *Kafka {
+func New(brokers []string, readTopic, writeTopic, groupID string, logger interfaces.Logger) *Kafka {
 	writer := &kafka.Writer{
 		Addr:     kafka.TCP(brokers...),
 		Topic:    writeTopic,
@@ -29,6 +31,7 @@ func New(brokers []string, readTopic, writeTopic, groupID string) *Kafka {
 	return &Kafka{
 		writer: writer,
 		reader: reader,
+		logger: logger,
 	}
 }
 
@@ -38,13 +41,13 @@ func (k *Kafka) StartReading(output chan<- kafka_model.Item) {
 	for {
 		msg, err := k.reader.ReadMessage(context.Background())
 		if err != nil {
-			log.Printf("Error reading message from Kafka: %v\n", err)
+			k.logger.Error("Error reading message from Kafka", "error", err)
 			continue
 		}
 		item := kafka_model.Item{}
 		err = json.Unmarshal(msg.Value, &item)
 		if err != nil {
-			log.Printf("Error decoding Kafka message: %v\n", err)
+			k.logger.Error("Error decoding Kafka message", "error", err)
 			continue
 		}
 		output <- item
@@ -56,7 +59,7 @@ func (k *Kafka) StartWriting(input <-chan kafka_model.Item) {
 	for item := range input {
 		data, err := json.Marshal(item)
 		if err != nil {
-			log.Printf("Error encoding item to JSON: %v\n", err)
+			k.logger.Error("Error encoding item to JSON", "error", err)
 			continue
 		}
 		message := kafka.Message{
@@ -67,7 +70,7 @@ func (k *Kafka) StartWriting(input <-chan kafka_model.Item) {
 		err = k.writer.WriteMessages(ctx, message)
 		cancel()
 		if err != nil {
-			log.Printf("Error writing message to Kafka: %v\n", err)
+			k.logger.Error("Error writing message to Kafka", "error", err)
 		}
 	}
 }

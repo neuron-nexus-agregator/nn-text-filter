@@ -4,6 +4,7 @@ import (
 	"os"
 	"sync"
 
+	"agregator/text-filter/internal/interfaces"
 	"agregator/text-filter/internal/service/filter"
 	"agregator/text-filter/internal/service/kafka"
 )
@@ -13,10 +14,10 @@ type App struct {
 	kafka  *kafka.Kafka
 }
 
-func New() *App {
+func New(logger interfaces.Logger) *App {
 	return &App{
-		filter: filter.New(),
-		kafka:  kafka.New([]string{os.Getenv("KAFKA_ADDR")}, "filter", "archive", "news-filter-group"),
+		filter: filter.New(logger),
+		kafka:  kafka.New([]string{os.Getenv("KAFKA_ADDR")}, "filter", "archive", "news-filter-group", logger),
 	}
 }
 
