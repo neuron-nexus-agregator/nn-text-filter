@@ -3,7 +3,6 @@ package filter
 import (
 	"agregator/text-filter/internal/interfaces"
 	"agregator/text-filter/internal/model/kafka"
-	"net/http"
 	"strings"
 )
 
@@ -44,20 +43,15 @@ func (f *Filter) filter(item kafka.Item) bool {
 	}
 
 	// Проверяем наличие нежелательных частей в ссылке
-	unwantedParts := []string{"erid=", "/video/", "/audio/", "/music/", "/photo/"}
-	for _, part := range unwantedParts {
-		if strings.Contains(item.Link, part) {
-			return false
-		}
+	disallowedSubstrings := []string{
+		"erid=", "/video/", "/photo/", "/audio/", "/gallery/", "/photoslider/", "/photos/", "/videos/", "/audios/", "/galleries/", "/podcast/", "/podcasts/",
 	}
 
-	// Проверяем доступность ссылки
-	resp, err := http.Get(item.Link)
-	if err != nil || resp.StatusCode != http.StatusOK {
-		if err != nil {
-			f.logger.Error("Error checking link", "error", err)
+	// Проверяем, содержит ли ссылка запрещенные подстроки
+	for _, substr := range disallowedSubstrings {
+		if strings.Contains(item.Link, substr) {
+			return false
 		}
-		return false
 	}
 
 	return true
